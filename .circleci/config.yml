@@ -1,0 +1,50 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:8-jdk
+    branches:
+      only:
+        - master
+    steps:
+      - checkout
+
+      - run:
+          name: Install packages
+          command: sudo apt-get update && sudo apt-get install wget zip unzip python2.7 python-pip -y
+
+      - run:
+          name: Install awscli
+          command: sudo pip install awscli
+
+      - run:
+          name: Build Artifact
+          command: |
+            pwd
+            ls -al
+            gradle build
+            cd build/distributions
+            ls -al
+            cd ../../
+            pwd
+            ls -al
+      - run:
+          name: Prep Artifact
+          command: |
+            echo "Hello the current build number is ${CIRCLE_BUILD_NUM}"
+            pwd
+            mkdir -p codedeploy_artifact
+            cp build/distributions/Lambda.zip codedeploy_artifact/
+            cd codedeploy_artifact
+            ls -al
+            mv Lambda.zip csye6225-lambda-${CIRCLE_BUILD_NUM}.zip
+            ls -al
+            pwd
+            cd ..
+            pwd
+            ls -al
+      - run:
+          name: Update Lambda Function zip
+          command: |
+           aws lambda update-function-code --function-name=${LAMBDA_NAME} \
+           --zip-file fileb://./codedeploy_artifact/csye6225-lambda-${CIRCLE_BUILD_NUM}.zip
